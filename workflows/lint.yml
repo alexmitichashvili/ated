@@ -1,20 +1,16 @@
-name: Build                       # label shown in the Actions tab and in commit status checks
+name: Static analysis             # name in the Actions tab
 
-on:                               # the events that trigger this workflow
-  push:                           # run when commits are pushed...
-    branches: [main]              # ...but only to the main branch, not to every branch
-  pull_request:                   # also run on every pull request, so bad code is caught before merge
+on: [push, pull_request]          # short form: run on any push to any branch, and on PRs
 
-jobs:                             # a workflow contains one or more jobs; jobs run in parallel by default
-  build:                          # internal id of this job (your choice of name)
-    runs-on: ubuntu-latest        # the throwaway VM this job executes on
-    steps:                        # the ordered list of things to do on that VM
-      - uses: actions/checkout@v4 # pre-made action that clones your repo onto the empty VM; always step one
-      - name: Compile             # human-readable label for this step in the logs
-        run: make                 # shell command executed on the VM; calls your Makefile
-      - name: Check binary exists
-        run: test -x ./ated       # fails the job if the binary wasn't produced or isn't executable
-      - uses: actions/upload-artifact@v4   # action that saves files from the VM before it's destroyed
-        with:                     # 'with' passes inputs to the action above
-          name: ated-binary       # the name the download will appear under on the run's summary page
-          path: ated              # which file(s) to save
+jobs:
+  cppcheck:                       # job id
+    runs-on: ubuntu-latest        # Linux VM — needed because we install a package with apt
+    steps:
+      - uses: actions/checkout@v4 # clone the repo onto the VM
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+                                  # 'update' refreshes the package lists; -y auto-confirms the install
+      - name: Run cppcheck
+        run: cppcheck --enable=warning,style --error-exitcode=1 main.c
+                                  # --enable turns on extra check categories beyond the defaults
+                                  # --error-exitcode=1 makes findings fail the job instead of just printing
